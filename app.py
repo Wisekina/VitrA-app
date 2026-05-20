@@ -8,6 +8,12 @@ import numpy as np
 import plotly.graph_objects as go
 import os
 
+try:
+    import anthropic
+    _ANTHROPIC_OK = True
+except ImportError:
+    _ANTHROPIC_OK = False
+
 st.set_page_config(
     page_title="VitrA Karo · Talep Tahmin",
     page_icon="🔷",
@@ -425,12 +431,67 @@ with c4:
 
 st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
 
+# ── Veri Asistanı bağlam oluşturucu ──────────────────────────────────────────
+def build_chat_context(df_raw, df_fc, fc_col, sel_bolge, sel_ebat):
+    parts = []
+    yillik = (df_raw.assign(Yil=lambda d: d["Tarih"].dt.year)
+              .groupby(["Bolge", "Yil"])["Satis"].sum()
+              .unstack("Yil").fillna(0).astype(int))
+    yillik.index = [BOLGE_FULL.get(b, b) for b in yillik.index]
+    parts.append("### Bölge Yıllık Satış (m²)\n" + yillik.to_string())
+
+    df25 = df_raw[df_raw["Tarih"].dt.year == 2025]
+    if not df25.empty:
+        m25 = (df25.assign(Ay=lambda d: d["Tarih"].dt.month)
+               .groupby(["Bolge", "Ay"])["Satis"].sum()
+               .unstack("Ay").fillna(0).astype(int))
+        m25.columns = [AY_TR.get(c, str(c)) for c in m25.columns]
+        m25.index = [BOLGE_FULL.get(b, b) for b in m25.index]
+        parts.append("### 2025 Aylık Bölge Satışları (m²)\n" + m25.to_string())
+        top15 = (df25.groupby("Ebat")["Satis"].sum()
+                 .sort_values(ascending=False).head(15).astype(int))
+        parts.append("### 2025 En Çok Satan 15 Ebat (m²)\n" +
+                     "\n".join(f"  {e}: {v:,}" for e, v in top15.items()))
+
+    if df_fc is not None and not df_fc.empty:
+        fc_r = df_fc.groupby("Bolge")[fc_col].sum().astype(int)
+        fc_r.index = [BOLGE_FULL.get(b, b) for b in fc_r.index]
+        parts.append("### 2026 Bölge Yıllık Tahminleri (m²)\n" +
+                     "\n".join(f"  {b}: {v:,}" for b, v in fc_r.items()))
+        fc_m = (df_fc.assign(Ay=lambda d: d["Tarih"].dt.month)
+                .groupby(["Bolge", "Ebat", "Ay"])[fc_col].sum()
+                .unstack("Ay").fillna(0).astype(int))
+        fc_m.columns = [AY_TR.get(c, str(c)) for c in fc_m.columns]
+        fc_m["Yıllık"] = fc_m.sum(axis=1)
+        fc_m.index = pd.MultiIndex.from_tuples(
+            [(BOLGE_FULL.get(b, b), e) for b, e in fc_m.index],
+            names=["Bölge", "Ebat"])
+        parts.append("### 2026 Aylık Tahminler - Bölge × Ebat (m²)\n" + fc_m.to_string())
+
+    bolge_ad = BOLGE_FULL.get(sel_bolge, sel_bolge)
+    mask = (df_raw["Bolge"] == sel_bolge) & (df_raw["Ebat"] == sel_ebat)
+    sel_h = df_raw[mask][["Tarih", "Satis"]].copy()
+    sel_h["Tarih"] = sel_h["Tarih"].dt.strftime("%Y-%m")
+    sel_h.columns = ["Tarih", "Satış(m²)"]
+    parts.append(f"### Seçili: {bolge_ad} — {sel_ebat}\nGeçmiş Satışlar:\n" +
+                 sel_h.to_string(index=False))
+
+    if df_fc is not None and not df_fc.empty:
+        mfc = (df_fc["Bolge"] == sel_bolge) & (df_fc["Ebat"] == sel_ebat)
+        sel_f = df_fc[mfc][["Tarih", fc_col]].copy()
+        sel_f["Tarih"] = sel_f["Tarih"].dt.strftime("%Y-%m")
+        sel_f.columns = ["Tarih", "Tahmin(m²)"]
+        parts[-1] += "\n\n2026 Tahminleri:\n" + sel_f.to_string(index=False)
+
+    return "\n\n".join(parts)
+
 # ── SEKMELER ──────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📅  Aylık Tahmin",
     "📈  Geçmiş & Trend",
     "🗺️  Bölge Haritası",
     "📋  Tahmin Kalitesi",
+    "💬  Veri Asistanı",
 ])
 
 # ─── TAB 1: AYLIK TAHMİN ──────────────────────────────────────────────────────
@@ -697,6 +758,63 @@ with tab4:
             st.dataframe(goster, use_container_width=True)
         except Exception as e:
             st.info(f"Tahmin kalite verisi gösterilemiyor. ({e})")
+
+# ─── TAB 5: VERİ ASİSTANI ────────────────────────────────────────────────────
+with tab5:
+    st.markdown('<div style="background:white;border-radius:18px;padding:24px;box-shadow:0 1px 6px rgba(0,0,0,0.06);">', unsafe_allow_html=True)
+    if not _ANTHROPIC_OK:
+        st.error("⚠️ `anthropic` paketi bulunamadı. requirements.txt'e ekleyip yeniden deploy edin.")
+    elif "ANTHROPIC_API_KEY" not in st.secrets:
+        st.info("🔑 Streamlit Cloud → Settings → Secrets bölümüne `ANTHROPIC_API_KEY = \"sk-ant-...\"` ekleyin.")
+    else:
+        _ai = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
+        _SYS = """Sen VitrA Karo talep tahmin sisteminin Türkçe asistanısın.
+Kullanıcı bölge, ebat ve dönem belirterek geçmiş satışlar veya 2026 tahminleri hakkında sorular sorar.
+Verilen veri bağlamını kullanarak kısa, net ve profesyonel yanıtlar ver. Her zaman Türkçe konuş.
+Sayıları m² cinsinden belirt. Tablolar yerine madde madde veya kısa paragraf kullan."""
+
+        if "vitra_msgs" not in st.session_state:
+            st.session_state.vitra_msgs = []
+
+        c1, c2 = st.columns([4, 1])
+        with c1:
+            st.markdown("### 💬 Veri Asistanı")
+            st.caption("Geçmiş satışlar ve 2026 tahminleri hakkında Türkçe soru sorabilirsiniz.")
+        with c2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🗑️ Temizle", use_container_width=True):
+                st.session_state.vitra_msgs = []
+                st.rerun()
+
+        for m in st.session_state.vitra_msgs:
+            with st.chat_message(m["role"]):
+                st.markdown(m["content"])
+
+        if soru := st.chat_input("Örn: 'Akdeniz bölgesi 60x60 için 2026 tahminleri nelerdir?'", key="asistan_input"):
+            st.session_state.vitra_msgs.append({"role": "user", "content": soru})
+            with st.chat_message("user"):
+                st.markdown(soru)
+
+            veri_ctx = build_chat_context(df_raw, df_fc, fc_col, sel_bolge, sel_ebat)
+            tam_soru = f"## Veri Bağlamı\n{veri_ctx}\n\n## Kullanıcı Sorusu\n{soru}"
+            gecmis = st.session_state.vitra_msgs[:-1][-6:]
+            api_mesajlar = [{"role": m["role"], "content": m["content"]} for m in gecmis]
+            api_mesajlar.append({"role": "user", "content": tam_soru})
+
+            with st.chat_message("assistant"):
+                try:
+                    with _ai.messages.stream(
+                        model="claude-haiku-4-5",
+                        max_tokens=1024,
+                        system=[{"type": "text", "text": _SYS,
+                                 "cache_control": {"type": "ephemeral"}}],
+                        messages=api_mesajlar,
+                    ) as akis:
+                        yanit = st.write_stream(akis.text_stream)
+                    st.session_state.vitra_msgs.append({"role": "assistant", "content": yanit})
+                except Exception as hata:
+                    st.error(f"API hatası: {hata}")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ── FOOTER ────────────────────────────────────────────────────────────────────
 st.markdown(f"""
