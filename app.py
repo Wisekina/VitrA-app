@@ -9,10 +9,10 @@ import plotly.graph_objects as go
 import os
 
 try:
-    import anthropic
-    _ANTHROPIC_OK = True
+    import google.generativeai as genai
+    _GEMINI_OK = True
 except ImportError:
-    _ANTHROPIC_OK = False
+    _GEMINI_OK = False
 
 st.set_page_config(
     page_title="VitrA Karo · Talep Tahmin",
@@ -762,16 +762,19 @@ with tab4:
 # ─── TAB 5: VERİ ASİSTANI ────────────────────────────────────────────────────
 with tab5:
     st.markdown('<div style="background:white;border-radius:18px;padding:24px;box-shadow:0 1px 6px rgba(0,0,0,0.06);">', unsafe_allow_html=True)
-    if not _ANTHROPIC_OK:
-        st.error("⚠️ `anthropic` paketi bulunamadı. requirements.txt'e ekleyip yeniden deploy edin.")
-    elif "ANTHROPIC_API_KEY" not in st.secrets:
-        st.info("🔑 Streamlit Cloud → Settings → Secrets bölümüne `ANTHROPIC_API_KEY = \"sk-ant-...\"` ekleyin.")
+    if not _GEMINI_OK:
+        st.error("⚠️ `google-generativeai` paketi bulunamadı. requirements.txt'e ekleyip yeniden deploy edin.")
+    elif "GEMINI_API_KEY" not in st.secrets:
+        st.info("🔑 Streamlit Cloud → Settings → Secrets bölümüne `GEMINI_API_KEY = \"...\"` ekleyin.")
     else:
-        _ai = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
-        _SYS = """Sen VitrA Karo talep tahmin sisteminin Türkçe asistanısın.
+        genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+        _model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash",
+            system_instruction="""Sen VitrA Karo talep tahmin sisteminin Türkçe asistanısın.
 Kullanıcı bölge, ebat ve dönem belirterek geçmiş satışlar veya 2026 tahminleri hakkında sorular sorar.
 Verilen veri bağlamını kullanarak kısa, net ve profesyonel yanıtlar ver. Her zaman Türkçe konuş.
-Sayıları m² cinsinden belirt. Tablolar yerine madde madde veya kısa paragraf kullan."""
+Sayıları m² cinsinden belirt. Tablolar yerine madde madde veya kısa paragraf kullan.""",
+        )
 
         if "vitra_msgs" not in st.session_state:
             st.session_state.vitra_msgs = []
@@ -797,20 +800,24 @@ Sayıları m² cinsinden belirt. Tablolar yerine madde madde veya kısa paragraf
 
             veri_ctx = build_chat_context(df_raw, df_fc, fc_col, sel_bolge, sel_ebat)
             tam_soru = f"## Veri Bağlamı\n{veri_ctx}\n\n## Kullanıcı Sorusu\n{soru}"
+
+            # Gemini geçmiş formatı: user/model sıralı
             gecmis = st.session_state.vitra_msgs[:-1][-6:]
-            api_mesajlar = [{"role": m["role"], "content": m["content"]} for m in gecmis]
-            api_mesajlar.append({"role": "user", "content": tam_soru})
+            gemini_history = []
+            for m in gecmis:
+                role = "model" if m["role"] == "assistant" else "user"
+                gemini_history.append({"role": role, "parts": [m["content"]]})
 
             with st.chat_message("assistant"):
                 try:
-                    with _ai.messages.stream(
-                        model="claude-haiku-4-5",
-                        max_tokens=1024,
-                        system=[{"type": "text", "text": _SYS,
-                                 "cache_control": {"type": "ephemeral"}}],
-                        messages=api_mesajlar,
-                    ) as akis:
-                        yanit = st.write_stream(akis.text_stream)
+                    chat = _model.start_chat(history=gemini_history)
+
+                    def _stream():
+                        for chunk in chat.send_message(tam_soru, stream=True):
+                            if chunk.text:
+                                yield chunk.text
+
+                    yanit = st.write_stream(_stream())
                     st.session_state.vitra_msgs.append({"role": "assistant", "content": yanit})
                 except Exception as hata:
                     st.error(f"API hatası: {hata}")
