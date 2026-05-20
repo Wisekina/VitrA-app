@@ -182,6 +182,24 @@ details summary p { font-weight: 700 !important; color: #0D1B2A !important; }
 
 /* Plotly grafik container */
 .stPlotlyChart { border-radius: 16px; overflow: hidden; }
+
+/* ── Tablet & mobil uyumu ── */
+@media (max-width: 900px) {
+    .main .block-container {
+        padding: 0 0.5rem 2rem !important;
+    }
+    div[data-testid="stMetricValue"] {
+        font-size: 1.2rem !important;
+    }
+    div[data-testid="stMetricLabel"] p {
+        font-size: 0.58rem !important;
+        letter-spacing: 1px !important;
+    }
+    button[data-baseweb="tab"] {
+        font-size: 0.72rem !important;
+        padding: 10px 10px !important;
+    }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -324,23 +342,25 @@ d_arr  = "▲" if delta_pct >= 0 else "▼"
 d_sign = "+" if delta_pct >= 0 else ""
 
 st.markdown(f"""
-<div style="background:white; border-radius:0 0 20px 20px; padding:20px 32px;
+<div style="background:white; border-radius:0 0 20px 20px; padding:16px 20px;
             border-bottom:3px solid #E05C2A;
             box-shadow:0 2px 16px rgba(13,27,42,0.08);
             display:flex; align-items:center; justify-content:space-between;
-            margin-bottom:28px;">
-  <div>
-    <p style="margin:0; font-size:.7rem; font-weight:700; letter-spacing:2.5px;
-              color:#94A3B8; text-transform:uppercase;">
+            flex-wrap:wrap; gap:10px;
+            margin-bottom:20px;">
+  <div style="min-width:0; flex:1;">
+    <p style="margin:0; font-size:clamp(.55rem,.9vw,.7rem); font-weight:700; letter-spacing:2px;
+              color:#94A3B8; text-transform:uppercase; white-space:nowrap;">
       Talep Tahmin Sistemi · Karo
     </p>
-    <h2 style="margin:4px 0 0; font-size:1.45rem; font-weight:800; color:#0D1B2A;">
+    <h2 style="margin:4px 0 0; font-size:clamp(1rem,2.5vw,1.45rem); font-weight:800;
+               color:#0D1B2A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
       {bolge_ad}
-      <span style="color:#E05C2A; margin:0 8px;">·</span>
+      <span style="color:#E05C2A; margin:0 6px;">·</span>
       {sel_ebat}
     </h2>
   </div>
-  {LOGO} style="height:72px; border-radius:8px; object-fit:contain;"/>
+  {LOGO} style="height:clamp(44px,6vw,72px); border-radius:8px; object-fit:contain; flex-shrink:0;"/>
 </div>
 """, unsafe_allow_html=True)
 
@@ -352,19 +372,19 @@ with c1:
     if has_tahmin:
         st.markdown(f"""
         <div style="background: linear-gradient(135deg,#0D1B2A 0%,#1A3560 100%);
-                    border-radius:16px; padding:24px 28px;
+                    border-radius:16px; padding:18px 20px;
                     box-shadow:0 4px 20px rgba(13,27,42,0.2);
-                    border-left:4px solid #E05C2A; height:130px;
+                    border-left:4px solid #E05C2A; min-height:110px;
                     display:flex; flex-direction:column; justify-content:center;">
-          <p style="margin:0; font-size:.65rem; font-weight:700; letter-spacing:2.5px;
+          <p style="margin:0; font-size:clamp(.55rem,.8vw,.65rem); font-weight:700; letter-spacing:2px;
                     color:rgba(255,255,255,.5); text-transform:uppercase;">
             2026 Tahmini Yıllık Satış (m²)
           </p>
-          <p style="margin:8px 0 6px; font-size:2.4rem; font-weight:900;
+          <p style="margin:6px 0 4px; font-size:clamp(1.4rem,3vw,2.4rem); font-weight:900;
                     color:white; line-height:1; letter-spacing:-1px;">
             {tahmin_2026:,.0f}
           </p>
-          <p style="margin:0; font-size:.8rem; color:rgba(255,255,255,.55);">
+          <p style="margin:0; font-size:clamp(.7rem,1vw,.8rem); color:rgba(255,255,255,.55);">
             Aylık ort.&nbsp;<b style="color:white;">{tahmin_aylik:,.0f} m²</b>
             &ensp;
             <span style="color:{d_clr}; font-weight:700;">{d_arr}&nbsp;%{abs(delta_pct):.1f}</span>
@@ -375,7 +395,7 @@ with c1:
     else:
         st.markdown("""
         <div style="background:#F8FAFC; border-radius:16px; padding:24px 28px;
-                    border:2px dashed #CBD5E1; height:130px;
+                    border:2px dashed #CBD5E1; min-height:110px;
                     display:flex; align-items:center; justify-content:center;">
           <p style="margin:0; color:#94A3B8; font-size:.9rem;">Tahmin verisi yok</p>
         </div>""", unsafe_allow_html=True)
@@ -383,12 +403,12 @@ with c1:
 with c2:
     if has_tahmin:
         st.markdown(f"""
-        <div style="background:white;border-radius:16px;padding:22px 24px;
+        <div style="background:white;border-radius:16px;padding:18px 16px;
                     border:1px solid #EAECF0;box-shadow:0 1px 4px rgba(0,0,0,0.06);
-                    height:130px;display:flex;flex-direction:column;justify-content:center;">
-          <p style="margin:0 0 4px;font-size:.68rem;font-weight:700;letter-spacing:1.8px;
+                    min-height:110px;display:flex;flex-direction:column;justify-content:center;">
+          <p style="margin:0 0 4px;font-size:clamp(.55rem,.8vw,.68rem);font-weight:700;letter-spacing:1.5px;
                     color:#94A3B8;text-transform:uppercase;">2025 Gerçek (m²)</p>
-          <p style="margin:0 0 8px;font-size:1.8rem;font-weight:800;color:#0D1B2A;line-height:1.1;">
+          <p style="margin:0 0 8px;font-size:clamp(1.1rem,2vw,1.8rem);font-weight:800;color:#0D1B2A;line-height:1.1;">
             {toplam_2025:,.0f}
           </p>
           <p style="margin:0;font-size:.82rem;font-weight:600;color:{d_clr};">
