@@ -15,6 +15,41 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# ── Login ─────────────────────────────────────────────────────────────────────
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.markdown("""
+    <style>
+    .stApp { background: #0D1B2A; }
+    </style>
+    """, unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 1.2, 1])
+    with col2:
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style='text-align:center; margin-bottom:32px;'>
+          <p style='color:rgba(255,255,255,.4); font-size:.75rem; letter-spacing:3px;
+                    text-transform:uppercase; font-weight:700; margin:0;'>
+            Eczacıbaşı VitrA Karo
+          </p>
+          <h2 style='color:white; font-size:1.6rem; font-weight:800; margin:8px 0 0;'>
+            Talep Tahmin Sistemi
+          </h2>
+        </div>
+        """, unsafe_allow_html=True)
+        username = st.text_input("Kullanıcı Adı", placeholder="Kullanıcı adınızı girin")
+        password = st.text_input("Şifre", type="password", placeholder="Şifrenizi girin")
+        if st.button("Giriş Yap", use_container_width=True):
+            if (username == st.secrets["credentials"]["username"] and
+                    password == st.secrets["credentials"]["password"]):
+                st.session_state.authenticated = True
+                st.rerun()
+            else:
+                st.error("Kullanıcı adı veya şifre hatalı.")
+    st.stop()
+
 # ── Logo ──────────────────────────────────────────────────────────────────────
 _LOGO_PATH = os.path.join(os.path.dirname(__file__), "vitra.jpeg")
 with open(_LOGO_PATH, "rb") as _f:
