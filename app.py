@@ -806,15 +806,16 @@ Sayıları m² cinsinden belirt. Tablolar yerine madde madde veya kısa paragraf
             with st.chat_message("assistant"):
                 try:
                     def _stream():
-                        with _groq.chat.completions.stream(
+                        akis = _groq.chat.completions.create(
                             model="llama-3.3-70b-versatile",
                             messages=api_mesajlar,
                             max_tokens=1024,
-                        ) as akis:
-                            for chunk in akis:
-                                delta = chunk.choices[0].delta.content
-                                if delta:
-                                    yield delta
+                            stream=True,
+                        )
+                        for chunk in akis:
+                            delta = chunk.choices[0].delta.content
+                            if delta:
+                                yield delta
 
                     yanit = st.write_stream(_stream())
                     st.session_state.vitra_msgs.append({"role": "assistant", "content": yanit})
