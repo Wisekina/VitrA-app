@@ -4,4 +4,4 @@ numpy
 plotly
 openpyxl
 arch
-google-generativeai
+groq
