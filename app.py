@@ -751,11 +751,35 @@ with tab4:
 
 # ─── TAB 5: VERİ ASİSTANI ────────────────────────────────────────────────────
 with tab5:
-    st.markdown('<div style="background:white;border-radius:18px;padding:24px;box-shadow:0 1px 6px rgba(0,0,0,0.06);">', unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+    [data-testid="stChatMessage"] {
+        background: white !important;
+        border-radius: 14px !important;
+        border: 1px solid #EAECF0 !important;
+        margin-bottom: 8px !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {
+        background: #EFF6FF !important;
+        border-color: #BFDBFE !important;
+    }
+    [data-testid="stChatInput"] > div {
+        border-radius: 14px !important;
+        border: 1.5px solid #E2E8F0 !important;
+        background: white !important;
+    }
+    [data-testid="stChatInput"] > div:focus-within {
+        border-color: #E05C2A !important;
+        box-shadow: 0 0 0 3px rgba(224,92,42,0.12) !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     if not _GROQ_OK:
-        st.error("⚠️ `groq` paketi bulunamadı. requirements.txt'e ekleyip yeniden deploy edin.")
+        st.error("⚠️ `groq` paketi bulunamadı.")
     elif "GROQ_API_KEY" not in st.secrets:
-        st.info("🔑 Streamlit Cloud → Settings → Secrets bölümüne `GROQ_API_KEY = \"gsk_...\"` ekleyin.")
+        st.info("🔑 Streamlit Cloud → Settings → Secrets: `GROQ_API_KEY = \"gsk_...\"`")
     else:
         _groq = Groq(api_key=st.secrets["GROQ_API_KEY"])
         _SYS = """Sen VitrA Karo talep tahmin sisteminin Türkçe asistanısın.
@@ -766,21 +790,63 @@ Sayıları m² cinsinden belirt. Tablolar yerine madde madde veya kısa paragraf
         if "vitra_msgs" not in st.session_state:
             st.session_state.vitra_msgs = []
 
-        c1, c2 = st.columns([4, 1])
-        with c1:
-            st.markdown("### 💬 Veri Asistanı")
-            st.caption("Geçmiş satışlar ve 2026 tahminleri hakkında Türkçe soru sorabilirsiniz.")
-        with c2:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🗑️ Temizle", use_container_width=True):
+        # ── Header banner ──────────────────────────────────────────────────────
+        hcol, bcol = st.columns([5, 1])
+        with hcol:
+            st.markdown(f"""
+            <div style="background:linear-gradient(135deg,#0D1B2A 0%,#1A3560 100%);
+                        border-radius:18px;padding:22px 28px;margin-bottom:16px;
+                        border-left:5px solid #E05C2A;">
+              <p style="margin:0 0 3px;font-size:.65rem;font-weight:700;letter-spacing:2.5px;
+                        color:rgba(255,255,255,.4);text-transform:uppercase;">VitrA Karo · AI Asistan</p>
+              <h3 style="margin:0 0 6px;font-size:1.2rem;font-weight:800;color:white;">
+                💬 Veri Asistanı
+              </h3>
+              <p style="margin:0;font-size:.8rem;color:rgba(255,255,255,.5);">
+                <span style="color:#E05C2A;font-weight:600;">{bolge_ad}</span>
+                &nbsp;·&nbsp;
+                <span style="color:rgba(255,255,255,.8);font-weight:600;">{sel_ebat}</span>
+                &nbsp;·&nbsp; Geçmiş satışlar &amp; 2026 tahminleri
+              </p>
+            </div>
+            """, unsafe_allow_html=True)
+        with bcol:
+            st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+            if st.button("🗑️ Temizle", use_container_width=True, key="temizle_btn"):
                 st.session_state.vitra_msgs = []
                 st.rerun()
 
+        # ── Örnek sorular (boş durum) ──────────────────────────────────────────
+        _pending = st.session_state.pop("_pending_soru", None)
+
+        ornek_sorular = [
+            f"{bolge_ad} bölgesinin 2026 yıllık tahmini nedir?",
+            f"{sel_ebat} için en yüksek satış hangi ayda?",
+            "2025'te en çok satan 5 ebat hangileri?",
+            "Hangi bölge 2026'da en yüksek tahmine sahip?",
+        ]
+        if not st.session_state.vitra_msgs and not _pending:
+            st.markdown("""
+            <p style="margin:4px 0 10px;font-size:.68rem;font-weight:700;letter-spacing:1.5px;
+                      color:#94A3B8;text-transform:uppercase;">Örnek Sorular</p>
+            """, unsafe_allow_html=True)
+            eq1, eq2 = st.columns(2)
+            for i, s in enumerate(ornek_sorular):
+                col = eq1 if i % 2 == 0 else eq2
+                with col:
+                    if st.button(f"💡  {s}", key=f"ornek_{i}", use_container_width=True):
+                        st.session_state["_pending_soru"] = s
+                        st.rerun()
+            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+        # ── Mesaj geçmişi ──────────────────────────────────────────────────────
         for m in st.session_state.vitra_msgs:
             with st.chat_message(m["role"]):
                 st.markdown(m["content"])
 
-        if soru := st.chat_input("Örn: 'Akdeniz bölgesi 60x60 için 2026 tahminleri nelerdir?'", key="asistan_input"):
+        # ── Giriş & yanıt ─────────────────────────────────────────────────────
+        soru = st.chat_input("Bölge, ebat veya dönem hakkında soru sorun…", key="asistan_input") or _pending
+        if soru:
             st.session_state.vitra_msgs.append({"role": "user", "content": soru})
             with st.chat_message("user"):
                 st.markdown(soru)
@@ -806,12 +872,10 @@ Sayıları m² cinsinden belirt. Tablolar yerine madde madde veya kısa paragraf
                             delta = chunk.choices[0].delta.content
                             if delta:
                                 yield delta
-
                     yanit = st.write_stream(_stream())
                     st.session_state.vitra_msgs.append({"role": "assistant", "content": yanit})
                 except Exception as hata:
                     st.error(f"API hatası: {hata}")
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # ── FOOTER ────────────────────────────────────────────────────────────────────
 st.markdown(f"""
