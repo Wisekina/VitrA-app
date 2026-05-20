@@ -481,7 +481,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📈  Geçmiş & Trend",
     "🗺️  Bölge Haritası",
     "📋  Tahmin Kalitesi",
-    "💬  Veri Asistanı",
+    "💬  Karo Bot",
 ])
 
 # ─── TAB 1: AYLIK TAHMİN ──────────────────────────────────────────────────────
@@ -771,7 +771,7 @@ with tab5:
         st.info("🔑 Streamlit Cloud → Settings → Secrets: `GROQ_API_KEY = \"gsk_...\"`")
     else:
         _groq = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        _SYS = """Sen VitrA Karo talep tahmin sisteminin Türkçe asistanısın.
+        _SYS = """Sen Karo Bot'sun — VitrA Karo talep tahmin sisteminin Türkçe asistanı.
 Kullanıcı bölge, ebat ve dönem belirterek geçmiş satışlar veya 2026 tahminleri hakkında sorular sorar.
 Verilen veri bağlamını kullanarak kısa, net ve profesyonel yanıtlar ver. Her zaman Türkçe konuş.
 Sayıları m² cinsinden belirt. Tablolar yerine madde madde veya kısa paragraf kullan."""
@@ -789,7 +789,7 @@ Sayıları m² cinsinden belirt. Tablolar yerine madde madde veya kısa paragraf
               <p style="margin:0 0 3px;font-size:.65rem;font-weight:700;letter-spacing:2.5px;
                         color:rgba(255,255,255,.4);text-transform:uppercase;">VitrA Karo · AI Asistan</p>
               <h3 style="margin:0 0 6px;font-size:1.2rem;font-weight:800;color:white;">
-                💬 Veri Asistanı
+                💬 Karo Bot
               </h3>
               <p style="margin:0;font-size:.8rem;color:rgba(255,255,255,.5);">
                 <span style="color:#E05C2A;font-weight:600;">{bolge_ad}</span>
