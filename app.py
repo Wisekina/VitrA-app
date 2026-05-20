@@ -785,18 +785,34 @@ Sayıları m² cinsinden belirt. Tablolar yerine madde madde veya kısa paragraf
             st.markdown(f"""
             <div style="background:linear-gradient(135deg,#0D1B2A 0%,#1A3560 100%);
                         border-radius:18px;padding:22px 28px;margin-bottom:16px;
-                        border-left:5px solid #E05C2A;">
-              <p style="margin:0 0 3px;font-size:.65rem;font-weight:700;letter-spacing:2.5px;
-                        color:rgba(255,255,255,.4);text-transform:uppercase;">VitrA Karo · AI Asistan</p>
-              <h3 style="margin:0 0 6px;font-size:1.2rem;font-weight:800;color:white;">
-                💬 Karo Bot
-              </h3>
-              <p style="margin:0;font-size:.8rem;color:rgba(255,255,255,.5);">
-                <span style="color:#E05C2A;font-weight:600;">{bolge_ad}</span>
-                &nbsp;·&nbsp;
-                <span style="color:rgba(255,255,255,.8);font-weight:600;">{sel_ebat}</span>
-                &nbsp;·&nbsp; Geçmiş satışlar &amp; 2026 tahminleri
-              </p>
+                        border-left:5px solid #E05C2A;
+                        display:flex;align-items:center;gap:20px;">
+              <svg width="54" height="54" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+                <defs>
+                  <linearGradient id="kg" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#F07848"/>
+                    <stop offset="100%" stop-color="#C8481A"/>
+                  </linearGradient>
+                </defs>
+                <polygon points="30,3 57,30 30,57 3,30"
+                         fill="url(#kg)" stroke="rgba(255,255,255,0.55)" stroke-width="2.5"/>
+                <polygon points="30,13 47,30 30,47 13,30"
+                         fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.5"/>
+                <polygon points="30,3 3,30 30,30"
+                         fill="rgba(255,255,255,0.13)"/>
+                <circle cx="30" cy="30" r="3" fill="rgba(255,255,255,0.35)"/>
+              </svg>
+              <div>
+                <p style="margin:0 0 3px;font-size:.65rem;font-weight:700;letter-spacing:2.5px;
+                          color:rgba(255,255,255,.4);text-transform:uppercase;">VitrA Karo · AI Asistan</p>
+                <h3 style="margin:0 0 6px;font-size:1.2rem;font-weight:800;color:white;">Karo Bot</h3>
+                <p style="margin:0;font-size:.8rem;color:rgba(255,255,255,.5);">
+                  <span style="color:#E05C2A;font-weight:600;">{bolge_ad}</span>
+                  &nbsp;·&nbsp;
+                  <span style="color:rgba(255,255,255,.8);font-weight:600;">{sel_ebat}</span>
+                  &nbsp;·&nbsp; Geçmiş satışlar &amp; 2026 tahminleri
+                </p>
+              </div>
             </div>
             """, unsafe_allow_html=True)
         with bcol:
