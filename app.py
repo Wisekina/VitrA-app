@@ -753,17 +753,6 @@ with tab4:
 with tab5:
     st.markdown("""
     <style>
-    [data-testid="stChatMessage"] {
-        background: white !important;
-        border-radius: 14px !important;
-        border: 1px solid #EAECF0 !important;
-        margin-bottom: 8px !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    }
-    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {
-        background: #EFF6FF !important;
-        border-color: #BFDBFE !important;
-    }
     [data-testid="stChatInput"] > div {
         border-radius: 14px !important;
         border: 1.5px solid #E2E8F0 !important;
@@ -839,17 +828,35 @@ Sayıları m² cinsinden belirt. Tablolar yerine madde madde veya kısa paragraf
                         st.rerun()
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-        # ── Mesaj geçmişi ──────────────────────────────────────────────────────
+        # ── Mesaj geçmişi (custom balonlar) ───────────────────────────────────
         for m in st.session_state.vitra_msgs:
-            with st.chat_message(m["role"]):
+            if m["role"] == "user":
+                st.markdown(f"""
+                <div style="display:flex;justify-content:flex-end;margin:6px 0;">
+                  <div style="background:#0D1B2A;color:white;
+                              border-radius:18px 18px 4px 18px;
+                              padding:12px 18px;max-width:78%;
+                              font-size:.88rem;line-height:1.6;">
+                    {m["content"]}
+                  </div>
+                </div>""", unsafe_allow_html=True)
+            else:
                 st.markdown(m["content"])
+                st.markdown("<div style='margin-bottom:10px;border-bottom:1px solid #F1F5F9;'></div>", unsafe_allow_html=True)
 
         # ── Giriş & yanıt ─────────────────────────────────────────────────────
         soru = st.chat_input("Bölge, ebat veya dönem hakkında soru sorun…", key="asistan_input") or _pending
         if soru:
             st.session_state.vitra_msgs.append({"role": "user", "content": soru})
-            with st.chat_message("user"):
-                st.markdown(soru)
+            st.markdown(f"""
+            <div style="display:flex;justify-content:flex-end;margin:6px 0;">
+              <div style="background:#0D1B2A;color:white;
+                          border-radius:18px 18px 4px 18px;
+                          padding:12px 18px;max-width:78%;
+                          font-size:.88rem;line-height:1.6;">
+                {soru}
+              </div>
+            </div>""", unsafe_allow_html=True)
 
             veri_ctx = build_chat_context(df_raw, df_fc, fc_col, sel_bolge, sel_ebat)
             tam_soru = f"## Veri Bağlamı\n{veri_ctx}\n\n## Kullanıcı Sorusu\n{soru}"
@@ -859,23 +866,23 @@ Sayıları m² cinsinden belirt. Tablolar yerine madde madde veya kısa paragraf
                 api_mesajlar.append({"role": m["role"], "content": m["content"]})
             api_mesajlar.append({"role": "user", "content": tam_soru})
 
-            with st.chat_message("assistant"):
-                try:
-                    def _stream():
-                        akis = _groq.chat.completions.create(
-                            model="llama-3.3-70b-versatile",
-                            messages=api_mesajlar,
-                            max_tokens=1024,
-                            stream=True,
-                        )
-                        for chunk in akis:
-                            delta = chunk.choices[0].delta.content
-                            if delta:
-                                yield delta
-                    yanit = st.write_stream(_stream())
-                    st.session_state.vitra_msgs.append({"role": "assistant", "content": yanit})
-                except Exception as hata:
-                    st.error(f"API hatası: {hata}")
+            try:
+                def _stream():
+                    akis = _groq.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=api_mesajlar,
+                        max_tokens=1024,
+                        stream=True,
+                    )
+                    for chunk in akis:
+                        delta = chunk.choices[0].delta.content
+                        if delta:
+                            yield delta
+                yanit = st.write_stream(_stream())
+                st.session_state.vitra_msgs.append({"role": "assistant", "content": yanit})
+                st.markdown("<div style='margin-bottom:10px;border-bottom:1px solid #F1F5F9;'></div>", unsafe_allow_html=True)
+            except Exception as hata:
+                st.error(f"API hatası: {hata}")
 
 # ── FOOTER ────────────────────────────────────────────────────────────────────
 st.markdown(f"""
