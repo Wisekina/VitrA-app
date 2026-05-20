@@ -434,54 +434,44 @@ st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
 # ── Veri Asistanı bağlam oluşturucu ──────────────────────────────────────────
 def build_chat_context(df_raw, df_fc, fc_col, sel_bolge, sel_ebat):
     parts = []
+
+    # Bölge bazlı yıllık özet (2021-2025)
     yillik = (df_raw.assign(Yil=lambda d: d["Tarih"].dt.year)
               .groupby(["Bolge", "Yil"])["Satis"].sum()
               .unstack("Yil").fillna(0).astype(int))
     yillik.index = [BOLGE_FULL.get(b, b) for b in yillik.index]
-    parts.append("### Bölge Yıllık Satış (m²)\n" + yillik.to_string())
+    parts.append("### Bölge Yıllık Toplam Satış (m²)\n" + yillik.to_string())
 
+    # 2025 en çok satan 10 ebat
     df25 = df_raw[df_raw["Tarih"].dt.year == 2025]
     if not df25.empty:
-        m25 = (df25.assign(Ay=lambda d: d["Tarih"].dt.month)
-               .groupby(["Bolge", "Ay"])["Satis"].sum()
-               .unstack("Ay").fillna(0).astype(int))
-        m25.columns = [AY_TR.get(c, str(c)) for c in m25.columns]
-        m25.index = [BOLGE_FULL.get(b, b) for b in m25.index]
-        parts.append("### 2025 Aylık Bölge Satışları (m²)\n" + m25.to_string())
-        top15 = (df25.groupby("Ebat")["Satis"].sum()
-                 .sort_values(ascending=False).head(15).astype(int))
-        parts.append("### 2025 En Çok Satan 15 Ebat (m²)\n" +
-                     "\n".join(f"  {e}: {v:,}" for e, v in top15.items()))
+        top10 = (df25.groupby("Ebat")["Satis"].sum()
+                 .sort_values(ascending=False).head(10).astype(int))
+        parts.append("### 2025 En Çok Satan 10 Ebat (m²)\n" +
+                     "\n".join(f"  {e}: {v:,}" for e, v in top10.items()))
 
+    # 2026 bölge yıllık tahmin özeti
     if df_fc is not None and not df_fc.empty:
         fc_r = df_fc.groupby("Bolge")[fc_col].sum().astype(int)
         fc_r.index = [BOLGE_FULL.get(b, b) for b in fc_r.index]
         parts.append("### 2026 Bölge Yıllık Tahminleri (m²)\n" +
                      "\n".join(f"  {b}: {v:,}" for b, v in fc_r.items()))
-        fc_m = (df_fc.assign(Ay=lambda d: d["Tarih"].dt.month)
-                .groupby(["Bolge", "Ebat", "Ay"])[fc_col].sum()
-                .unstack("Ay").fillna(0).astype(int))
-        fc_m.columns = [AY_TR.get(c, str(c)) for c in fc_m.columns]
-        fc_m["Yıllık"] = fc_m.sum(axis=1)
-        fc_m.index = pd.MultiIndex.from_tuples(
-            [(BOLGE_FULL.get(b, b), e) for b, e in fc_m.index],
-            names=["Bölge", "Ebat"])
-        parts.append("### 2026 Aylık Tahminler - Bölge × Ebat (m²)\n" + fc_m.to_string())
 
+    # Seçili bölge+ebat detayı
     bolge_ad = BOLGE_FULL.get(sel_bolge, sel_bolge)
     mask = (df_raw["Bolge"] == sel_bolge) & (df_raw["Ebat"] == sel_ebat)
     sel_h = df_raw[mask][["Tarih", "Satis"]].copy()
     sel_h["Tarih"] = sel_h["Tarih"].dt.strftime("%Y-%m")
     sel_h.columns = ["Tarih", "Satış(m²)"]
-    parts.append(f"### Seçili: {bolge_ad} — {sel_ebat}\nGeçmiş Satışlar:\n" +
-                 sel_h.to_string(index=False))
+    detay = f"### Seçili: {bolge_ad} — {sel_ebat}\nGeçmiş Satışlar:\n" + sel_h.to_string(index=False)
 
     if df_fc is not None and not df_fc.empty:
         mfc = (df_fc["Bolge"] == sel_bolge) & (df_fc["Ebat"] == sel_ebat)
         sel_f = df_fc[mfc][["Tarih", fc_col]].copy()
         sel_f["Tarih"] = sel_f["Tarih"].dt.strftime("%Y-%m")
         sel_f.columns = ["Tarih", "Tahmin(m²)"]
-        parts[-1] += "\n\n2026 Tahminleri:\n" + sel_f.to_string(index=False)
+        detay += "\n\n2026 Tahminleri:\n" + sel_f.to_string(index=False)
+    parts.append(detay)
 
     return "\n\n".join(parts)
 
